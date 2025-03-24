@@ -1,0 +1,7 @@
+/home/gerard/Hunter-Adams-RP2040-Demos/build/pioasm/CMakeFiles/pioasm.dir
+/home/gerard/Hunter-Adams-RP2040-Demos/build/pioasm/CMakeFiles/edit_cache.dir
+/home/gerard/Hunter-Adams-RP2040-Demos/build/pioasm/CMakeFiles/rebuild_cache.dir
+/home/gerard/Hunter-Adams-RP2040-Demos/build/pioasm/CMakeFiles/list_install_components.dir
+/home/gerard/Hunter-Adams-RP2040-Demos/build/pioasm/CMakeFiles/install.dir
+/home/gerard/Hunter-Adams-RP2040-Demos/build/pioasm/CMakeFiles/install/local.dir
+/home/gerard/Hunter-Adams-RP2040-Demos/build/pioasm/CMakeFiles/install/strip.dir

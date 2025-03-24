@@ -1,3 +1,4 @@
 add_subdirectory(Blinky_Demo)
 add_subdirectory(GPIO_Interrupt_Demo)
 add_subdirectory(Memory_Experiment)
+add_subdirectory(Blinky_Parabola)

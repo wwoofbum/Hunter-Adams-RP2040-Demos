@@ -47,7 +47,7 @@ typedef signed int fix15 ;
 // the DDS units - core 0
 // Phase accumulator and phase increment. Increment sets output frequency.
 volatile unsigned int phase_accum_main_0;
-volatile unsigned int phase_incr_main_0 = (400.0*two32)/Fs ;
+volatile unsigned int phase_incr_main_0 = (2300.0*two32)/Fs ;
 
 // DDS sine table (populated in main())
 #define sine_table_size 256
@@ -65,15 +65,26 @@ fix15 current_amplitude_0 = 0 ;         // current amplitude (modified in ISR)
 fix15 current_amplitude_1 = 0 ;         // current amplitude (modified in ISR)
 
 // Timing parameters for beeps (units of interrupts)
-#define ATTACK_TIME             250
-#define DECAY_TIME              250
-#define SUSTAIN_TIME            10000
-#define BEEP_DURATION           10500
-#define BEEP_REPEAT_INTERVAL    50000
+// #define ATTACK_TIME             250
+// #define DECAY_TIME              250
+// #define SUSTAIN_TIME            10000
+// #define BEEP_DURATION           10500
+// #define BEEP_REPEAT_INTERVAL    50000
+// #define SYL_DURATION            2500
+// #define SYL_PAUSE               250
+#define ATTACK_TIME                100
+#define DECAY_TIME                 100
+#define BEEP_DURATION               680
+#define BEEP_REPEAT_INTERVAL        80
+#define CHIRP_REPEAT_INTERVAL       50000
+#define SYL_COUNT                   8
+
 
 // State machine variables
 volatile unsigned int STATE_0 = 0 ;
 volatile unsigned int count_0 = 0 ;
+volatile unsigned int CHIRP_STATE = 0;
+volatile unsigned int syl_count = 0;
 
 // SPI data
 uint16_t DAC_data_1 ; // output value
@@ -109,46 +120,66 @@ static void alarm_irq(void) {
     // Reset the alarm register
     timer_hw->alarm[ALARM_NUM] = timer_hw->timerawl + DELAY ;
 
-    if (STATE_0 == 0) {
-        // DDS phase and sine table lookup
-        phase_accum_main_0 += phase_incr_main_0  ;
-        DAC_output_0 = fix2int15(multfix15(current_amplitude_0,
-            sin_table[phase_accum_main_0>>24])) + 2048 ;
+    if (CHIRP_STATE == 0) {
+        if (STATE_0 == 0) {
+            // DDS phase and sine table lookup
+            phase_accum_main_0 += phase_incr_main_0  ;
+            DAC_output_0 = fix2int15(multfix15(current_amplitude_0,
+                sin_table[phase_accum_main_0>>24])) + 2048 ;
 
-        // Ramp up amplitude
-        if (count_0 < ATTACK_TIME) {
-            current_amplitude_0 = (current_amplitude_0 + attack_inc) ;
+            // Ramp up amplitude
+            if (count_0 < ATTACK_TIME) {
+                current_amplitude_0 = (current_amplitude_0 + attack_inc) ;
+            }
+            // Ramp down amplitude
+            else if (count_0 > BEEP_DURATION - DECAY_TIME) {
+                current_amplitude_0 = (current_amplitude_0 - decay_inc) ;
+            }
+
+            // Mask with DAC control bits
+            DAC_data_0 = (DAC_config_chan_B | (DAC_output_0 & 0xffff))  ;
+
+            // SPI write (no spinlock b/c of SPI buffer)
+            spi_write16_blocking(SPI_PORT, &DAC_data_0, 1) ;
+
+            // Increment the counter
+            count_0 += 1 ;
+
+            // State transition?
+            if (count_0 == BEEP_DURATION) {
+                STATE_0 = 1 ;
+                count_0 = 0 ;
+                
+            }        
+
         }
-        // Ramp down amplitude
-        else if (count_0 > BEEP_DURATION - DECAY_TIME) {
-            current_amplitude_0 = (current_amplitude_0 - decay_inc) ;
-        }
-
-        // Mask with DAC control bits
-        DAC_data_0 = (DAC_config_chan_B | (DAC_output_0 & 0xffff))  ;
-
-        // SPI write (no spinlock b/c of SPI buffer)
-        spi_write16_blocking(SPI_PORT, &DAC_data_0, 1) ;
-
-        // Increment the counter
-        count_0 += 1 ;
 
         // State transition?
-        if (count_0 == BEEP_DURATION) {
-            STATE_0 = 1 ;
-            count_0 = 0 ;
+        else {
+            count_0 += 1 ;
+            if (count_0 == BEEP_REPEAT_INTERVAL) {
+                current_amplitude_0 = 0 ;
+                STATE_0 = 0 ;
+                count_0 = 0 ;
+            // We have reached a complete syllable and pause, count it
+                syl_count += 1;
+                if(syl_count == SYL_COUNT) {
+                    CHIRP_STATE = 1;
+                }
+            }
+            
         }
     }
-
-    // State transition?
     else {
+        // We have beeped 8 times, now pause
         count_0 += 1 ;
-        if (count_0 == BEEP_REPEAT_INTERVAL) {
-            current_amplitude_0 = 0 ;
-            STATE_0 = 0 ;
+        if (count_0 == CHIRP_REPEAT_INTERVAL) {
+            CHIRP_STATE = 0;
             count_0 = 0 ;
+            STATE_0 = 0 ;
+            syl_count = 0 ;
         }
-    }
+    }   
 
     // De-assert the GPIO when we leave the interrupt
     gpio_put(ISR_GPIO, 0) ;
