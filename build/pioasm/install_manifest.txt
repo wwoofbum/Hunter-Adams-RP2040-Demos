@@ -1,5 +1,0 @@
-/home/gerard/Hunter-Adams-RP2040-Demos/build/pioasm-install/pioasm/pioasm
-/home/gerard/Hunter-Adams-RP2040-Demos/build/pioasm-install/pioasm/pioasmTargets.cmake
-/home/gerard/Hunter-Adams-RP2040-Demos/build/pioasm-install/pioasm/pioasmTargets-release.cmake
-/home/gerard/Hunter-Adams-RP2040-Demos/build/pioasm-install/pioasm/pioasmConfig.cmake
-/home/gerard/Hunter-Adams-RP2040-Demos/build/pioasm-install/pioasm/pioasmConfigVersion.cmake
